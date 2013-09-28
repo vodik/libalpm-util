@@ -1,19 +1,34 @@
-VERSION = alpha# $(shell git describe --tags)
+#VERSION = $(shell git describe --tags)
 
 CFLAGS := -fPIC -std=c99 \
 	-Wall -Wextra -pedantic \
 	-D_GNU_SOURCE \
-	-DREPOSE_VERSION=\"${VERSION}\" \
 	${CFLAGS}
+	#-DREPOSE_VERSION=\"${VERSION}\" \
 
-LDFLAGS = -shared -DPIC
+LDFLAGS := -shared -DPIC ${LDFLAGS}
+LDLIBS := -larchive
 
-all: alpm-util.so
-alpm-util.so: db/db_parser.o
-	${CC} ${LDFLAGS} -o $@ $?
+all: lib tests
+lib: libalpm-util.so
+
+libalpm-util.so.1.0: db/db_parser.o db/db.o
+	${CC} ${LDFLAGS} -Wl,-soname,libalpm-util.so.1 -o $@ $?
+
+libalpm-util.so: libalpm-util.so.1.0
+	ldconfig -v -n .
+	ln -s libalpm-util.so.1 libalpm-util.so
 
 db/db_parser.c: db/db_parser.rl
 	ragel -G2 $< -o $@
+
+tests: tests/db_dumper tests/db_parser
+
+tests/db_dumper: tests/db_dumper.c
+	${CC} $< -o $@ ${CFLAGS} -I. -L. -lalpm-util ${LDLIBS}
+
+tests/db_parser: tests/db_parser.c
+	${CC} $< -o $@ ${CFLAGS} -I. -L. -lalpm-util ${LDLIBS}
 
 install: alpm-util
 	# install -Dm755 repose ${DESTDIR}${PREFIX}/bin/repose
@@ -23,4 +38,4 @@ install: alpm-util
 clean:
 	# ${RM} repose *.o alpm/*.o
 
-.PHONY: clean install uninstall
+.PHONY: tests lib clean install uninstall

@@ -2,7 +2,7 @@
 #define STR_H
 
 #include <stdlib.h>
-#include <string.h>
+#include <memory.h>
 
 struct str_t {
     char *ptr;
